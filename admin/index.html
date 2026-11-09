@@ -1,1 +1,32 @@
 
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Омегабуд — Панель адміністратора</title>
+  <link rel="stylesheet" href="admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <main class="login-wrap">
+    <section class="login-card">
+      <div class="logo">ОМЕГАБУД</div>
+      <h1>Панель керування сайтом</h1>
+      <p>Увійдіть, щоб редагувати сайт компанії.</p>
+
+      <form id="loginForm">
+        <label for="email">Електронна пошта</label>
+        <input id="email" type="email" required placeholder="Ваша електронна пошта">
+
+        <label for="password">Пароль</label>
+        <input id="password" type="password" required placeholder="Ваш пароль">
+
+        <button type="submit" id="loginButton">Увійти</button>
+        <div id="message" role="status"></div>
+      </form>
+    </section>
+  </main>
+  <script src="admin.js"></script>
+</body>
+</html>
