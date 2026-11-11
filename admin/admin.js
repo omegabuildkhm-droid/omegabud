@@ -42,10 +42,10 @@ async function openAdmin() {
     <div class="admin-layout">
       <aside class="admin-sidebar">
         <h3>Керування</h3>
-        <button class="nav-button active" id="pagesTab">Сторінки</button>
-        <button class="nav-button" id="editorTab">Візуальний редактор</button>
-        <button class="nav-button" id="seoTab">SEO</button>
-        <button class="nav-button" id="mediaTab">Медіатека</button>
+        <button class="nav-button" id="pagesTab">Архів редактора</button>
+        <button class="nav-button" id="editorTab" hidden>Редактор чернеток</button>
+        <button class="nav-button" id="seoTab" hidden>SEO</button>
+        <button class="nav-button" id="mediaTab" hidden>Медіатека</button>
         <div class="sidebar-note">Сайт Омегабуд</div>
       </aside>
 
@@ -65,11 +65,11 @@ async function openAdmin() {
           <div class="view-heading editor-heading">
             <div>
               <h1 id="editorTitle">Візуальний редактор</h1>
-              <p>Перетягуйте блоки та змінюйте вміст сторінки.</p>
+              <p>Архівний редактор: зберігає в базі Supabase. Ці чернетки не замінюють сторінки основного сайту.</p>
             </div>
             <div class="editor-actions">
               <button id="saveDraftButton" class="secondary-button">Зберегти чернетку</button>
-              <button id="publishButton" class="primary-button">Опублікувати</button>
+              <button id="publishButton" class="primary-button">Зберегти в базі</button>
             </div>
           </div>
           <div class="editor-fields">
@@ -111,11 +111,12 @@ async function openAdmin() {
   document.getElementById("saveDraftButton").onclick = () => savePage("draft");
   document.getElementById("publishButton").onclick = () => savePage("published");
 
+  await initWorkspace();
   await loadPages();
 }
 
 function showView(view) {
-  ["pages", "editor", "seo", "media"].forEach(name => {
+  ["pages", "editor", "seo", "media", "portfolio", "leads", "analytics", "settings"].forEach(name => {
     document.getElementById(name + "View").style.display =
       name === view ? "block" : "none";
 
@@ -323,7 +324,7 @@ async function savePage(status) {
     return;
   }
 
-  alert(status === "published" ? "Сторінку опубліковано в базі даних." : "Чернетку збережено.");
+  alert(status === "published" ? "Сторінку збережено в базі. Основний сайт не змінено." : "Чернетку збережено.");
   await loadPages();
 }
 

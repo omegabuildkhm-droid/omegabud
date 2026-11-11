@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
   <title>Омегабуд — Адміністрування</title>
 
   <link rel="stylesheet" href="admin.css">
@@ -21,10 +22,10 @@
 
       <form id="loginForm">
         <label for="email">Електронна пошта</label>
-        <input id="email" type="email" required placeholder="Ваша електронна пошта">
+        <input id="email" autocomplete="username" type="email" required placeholder="Ваша електронна пошта">
 
         <label for="password">Пароль</label>
-        <input id="password" type="password" required placeholder="Ваш пароль">
+        <input id="password" autocomplete="current-password" type="password" required placeholder="Ваш пароль">
 
         <button type="submit" id="loginButton">Увійти</button>
         <div id="message" role="status"></div>
@@ -34,6 +35,7 @@
 
   <div id="adminApp" style="display:none"></div>
 
+  <script src="workspace.js"></script>
   <script src="admin.js"></script>
 </body>
 </html>

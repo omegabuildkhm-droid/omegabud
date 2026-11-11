@@ -1,85 +1,42 @@
-const menuToggle = document.querySelector('.menu-toggle');
-const nav = document.querySelector('.nav');
-function closeMenu() {
-  nav.classList.remove('open');
-  menuToggle.setAttribute('aria-expanded', 'false');
-  menuToggle.setAttribute('aria-label', 'Відкрити меню');
-  menuToggle.textContent = '☰';
+(()=>{
+const api='/.netlify/functions/site-api';
+const qs=s=>document.querySelector(s);
+const menu=qs('.menu-toggle'),nav=qs('#main-nav');
+function closeMenu(){nav?.classList.remove('open');menu?.setAttribute('aria-expanded','false');menu?.setAttribute('aria-label','Відкрити меню');}
+menu?.addEventListener('click',()=>{const open=nav.classList.toggle('open');menu.setAttribute('aria-expanded',String(open));menu.setAttribute('aria-label',open?'Закрити меню':'Відкрити меню');});nav?.querySelectorAll('a').forEach(a=>a.addEventListener('click',closeMenu));document.addEventListener('keydown',e=>{if(e.key==='Escape'&&nav?.classList.contains('open')){closeMenu();menu.focus();}});
+const storage={get(key){try{return localStorage.getItem(key)}catch{return null}},set(key,value){try{localStorage.setItem(key,value)}catch{}}};
+let requestId=crypto.randomUUID();
+let consent=storage.get('omegabud-analytics')==='yes',session='',source='',campaign='',gaId='',gaLoaded=false,viewSent=false;
+function startSession(){try{session=sessionStorage.getItem('omegabud-session')||crypto.randomUUID();sessionStorage.setItem('omegabud-session',session);const params=new URLSearchParams(location.search);const ref=document.referrer?new URL(document.referrer).hostname:'';source=params.get('utm_source')||sessionStorage.getItem('omegabud-source')||(ref!==location.hostname?ref:'');campaign=params.get('utm_campaign')||sessionStorage.getItem('omegabud-campaign')||'';sessionStorage.setItem('omegabud-source',source);sessionStorage.setItem('omegabud-campaign',campaign);}catch{session=crypto.randomUUID();}}
+function eventData(type,service=''){return {type,path:location.pathname,session,service:service||document.body.dataset.service||'',source,campaign};}
+function track(type,service=''){if(!consent||navigator.doNotTrack==='1'||location.pathname.startsWith('/admin'))return;const data=eventData(type,service);fetch(api+'?action=event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),keepalive:true}).catch(()=>{});if(gaLoaded)window.gtag('event',type,{service:data.service});}
+function loadGa(){if(!consent||navigator.doNotTrack==='1'||!/^G-[A-Z0-9]{5,20}$/.test(gaId)||gaLoaded)return;gaLoaded=true;window.dataLayer=window.dataLayer||[];window.gtag=function(){window.dataLayer.push(arguments)};window.gtag('js',new Date());window.gtag('config',gaId,{send_page_view:true});const tag=document.createElement('script');tag.async=true;tag.src='https://www.googletagmanager.com/gtag/js?id='+encodeURIComponent(gaId);document.head.append(tag);}
+function startAnalytics(){if(!consent||navigator.doNotTrack==='1')return;startSession();if(!viewSent){track('page_view');viewSent=true;}loadGa();observeServices();}
+const seen=new Set();let observer;
+function observeServices(){if(!consent||!('IntersectionObserver'in window))return;observer?.disconnect();observer=new IntersectionObserver(entries=>{for(const e of entries)if(e.isIntersecting&&e.intersectionRatio>=.5){const id=e.target.dataset.service;if(!seen.has(id)){seen.add(id);track('service_impression',id);}observer.unobserve(e.target);}},{threshold:.5});document.querySelectorAll('.service-card[data-service]').forEach(x=>{if(!seen.has(x.dataset.service))observer.observe(x)});}
+function chooseConsent(allowed){consent=allowed;storage.set('omegabud-analytics',allowed?'yes':'no');qs('#consent').hidden=true;if(allowed){if(window.gtag)window.gtag('consent','update',{analytics_storage:'granted'});startAnalytics();}else{observer?.disconnect();if(gaId){window['ga-disable-'+gaId]=true;if(window.gtag)window.gtag('consent','update',{analytics_storage:'denied'});}try{sessionStorage.removeItem('omegabud-session');sessionStorage.removeItem('omegabud-source');sessionStorage.removeItem('omegabud-campaign')}catch{}session='';}}
+qs('#accept-analytics')?.addEventListener('click',()=>{if(gaId)window['ga-disable-'+gaId]=false;chooseConsent(true)});qs('#decline-analytics')?.addEventListener('click',()=>chooseConsent(false));document.querySelectorAll('[data-consent-settings]').forEach(b=>b.addEventListener('click',()=>{qs('#consent').hidden=false;}));if(!storage.get('omegabud-analytics'))qs('#consent').hidden=false;
+document.addEventListener('click',e=>{const el=e.target.closest('[data-track]');if(el)track(el.dataset.track,el.dataset.service)});
+const form=qs('#lead-form');
+form?.addEventListener('input',()=>{form.elements.phone.setCustomValidity('');requestId=crypto.randomUUID();});
+form?.addEventListener('submit',async e=>{
+ e.preventDefault();const d=Object.fromEntries(new FormData(form)),status=form.querySelector('.form-status'),button=form.querySelector('button[type=submit]');
+ const digits=d.phone.replace(/\D/g,'');if(!(/^0\d{9}$/.test(digits)||/^380\d{9}$/.test(digits)||(/^\+[\d ()-]+$/.test(d.phone)&&/^[1-9]\d{7,14}$/.test(digits)))){form.elements.phone.setCustomValidity('Вкажіть номер, наприклад +380 97 123 45 67.');form.elements.phone.reportValidity();return;}
+ if(!d.name.trim()){form.elements.name.focus();return;}
+ button.disabled=true;button.textContent='Надсилаємо…';status.classList.remove('error');status.textContent='';
+ try{const response=await fetch(api+'?action=lead',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...d,...eventData('lead_submit',d.service),requestId,privacy:form.elements.privacy.checked,analytics:consent&&navigator.doNotTrack!=='1'}),signal:AbortSignal.timeout(20000)});let data;try{data=await response.json()}catch{throw new Error('Сервіс заявок тимчасово недоступний.')}if(!response.ok||!data.ok)throw new Error(data.error||'Не вдалося надіслати заявку.');status.textContent='Дякуємо! Ваш запит збережено. Ми зв’яжемося з вами за вказаним номером.';if(consent&&gaLoaded)window.gtag('event','generate_lead',{service:d.service});form.reset();requestId=crypto.randomUUID();if(document.body.dataset.service)form.elements.service.value=document.body.dataset.service;}
+ catch(error){status.classList.add('error');status.textContent=(error.name==='TimeoutError'?'Не отримали підтвердження надсилання. Зателефонуйте, щоб уточнити, чи надійшла заявка.':error.message||'Не вдалося надіслати заявку.')+' Телефон: +38 (097) 962-30-63.';}
+ finally{button.disabled=false;button.textContent='Надіслати запит →';status.focus();}
+});
+const serviceNames={'remont-kvartyr':'Ремонт квартир','remont-ofisiv':'Комерційні приміщення','napivsukha-stiazhka':'Напівсуха стяжка','natiazhni-steli':'Натяжні стелі','mashynna-shtukaturka':'Машинна штукатурка','maliarni-roboty':'Малярні роботи'};
+const mediaUrl=url=>/^\/\.netlify\/functions\/site-api\?action=media&id=[a-f0-9-]{36}\.(jpg|png|webp)$/.test(url||'');
+function el(tag,cls,value){const node=document.createElement(tag);if(cls)node.className=cls;if(value)node.textContent=value;return node;}
+let projects=[];
+function renderProjects(filter='all'){
+ const grid=qs('#portfolio-grid');if(!grid)return;grid.replaceChildren();const list=projects.filter(p=>filter==='all'||p.service===filter);qs('#portfolio-empty')?.toggleAttribute('hidden',list.length>0);
+ for(const p of list){const card=el('article','project-card');const img=el('img','project-cover');img.src=p.photos[0];img.alt=p.title;img.loading='lazy';img.width=900;img.height=650;card.append(img);const body=el('div','project-body');body.append(el('span','',serviceNames[p.service]||''),el('h3','',p.title));const meta=el('div','project-meta');if(p.area)meta.append(el('span','',p.area));if(p.duration)meta.append(el('span','',p.duration));body.append(meta,el('p','',p.description));if(p.photos.length>1){const gallery=el('div','project-gallery');for(const [i,url] of p.photos.entries()){const a=el('a');a.href=url;a.target='_blank';a.rel='noopener';a.setAttribute('aria-label',`Відкрити фото ${i+1}: ${p.title}`);const thumb=el('img');thumb.src=url;thumb.alt=`${p.title} — фото ${i+1}`;thumb.loading='lazy';a.append(thumb);gallery.append(a);}body.append(gallery);}card.append(body);grid.append(card);}
 }
-menuToggle.addEventListener('click', () => {
-  const isOpen = nav.classList.toggle('open');
-  menuToggle.setAttribute('aria-expanded', String(isOpen));
-  menuToggle.setAttribute('aria-label', isOpen ? 'Закрити меню' : 'Відкрити меню');
-  menuToggle.textContent = isOpen ? '×' : '☰';
-});
-nav.querySelectorAll('a').forEach(link => link.addEventListener('click', closeMenu));
-document.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && nav.classList.contains('open')) {
-    closeMenu();
-    menuToggle.focus();
-  }
-});
-document.getElementById('year').textContent = new Date().getFullYear();
-
-const form = document.getElementById('lead-form');
-const result = document.getElementById('form-result');
-const actions = document.getElementById('request-actions');
-const phoneInput = document.getElementById('phone');
-const copyStatus = document.getElementById('copy-status');
-let requestText = '';
-
-form.addEventListener('input', () => {
-  phoneInput.setCustomValidity('');
-  result.classList.remove('show');
-  result.textContent = '';
-  actions.hidden = true;
-  copyStatus.textContent = '';
-  requestText = '';
-});
-form.addEventListener('submit', event => {
-  event.preventDefault();
-  const data = new FormData(form);
-  const name = String(data.get('name') || '').trim();
-  const phone = String(data.get('phone') || '').trim();
-  const digits = phone.replace(/\D/g, '');
-  const ukrainian = /^0\d{9}$/.test(digits) || /^380\d{9}$/.test(digits);
-  const international = /^\+[\d\s()-]+$/.test(phone) && /^[1-9]\d{7,14}$/.test(digits);
-  if (!ukrainian && !international) {
-    phoneInput.setCustomValidity('Вкажіть коректний номер, наприклад +380 97 123 45 67.');
-    phoneInput.reportValidity();
-    return;
-  }
-  if (!name) {
-    document.getElementById('name').focus();
-    return;
-  }
-  requestText = [
-    'Заявка з сайту Омегабуд',
-    `Ім’я: ${name}`,
-    `Телефон: ${phone}`,
-    `Послуга: ${String(data.get('service') || '').trim()}`,
-    String(data.get('details') || '').trim() ? `Деталі: ${String(data.get('details')).trim()}` : ''
-  ].filter(Boolean).join('\n');
-  result.textContent = requestText + '\n\nЗаявку підготовлено. Оберіть спосіб надсилання нижче.';
-  result.classList.add('show');
-  document.getElementById('email-link').href = `mailto:omegabuild.khm@gmail.com?subject=${encodeURIComponent('Заявка на ремонт — Омегабуд')}&body=${encodeURIComponent(requestText)}`;
-  document.getElementById('sms-link').href = `sms:+380979623063?body=${encodeURIComponent(requestText)}`;
-  actions.hidden = false;
-  result.focus();
-});
-document.getElementById('copy-request').addEventListener('click', async () => {
-  try {
-    await navigator.clipboard.writeText(requestText);
-    copyStatus.textContent = 'Текст скопійовано. Вставте його в повідомлення та надішліть нам.';
-  } catch {
-    copyStatus.textContent = 'Не вдалося скопіювати автоматично. Виділіть і скопіюйте текст заявки вище.';
-  }
-});
-
-// Carry the chosen service into the consultation request.
-document.querySelectorAll('[data-service]').forEach(link => {
-  link.addEventListener('click', () => {
-    document.getElementById('service').value = link.dataset.service;
-    form.dispatchEvent(new Event('input', { bubbles: true }));
-  });
-});
+document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-filter]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',String(x===b));});renderProjects(b.dataset.filter)}));
+fetch(api+'?action=public').then(async r=>{if(!r.ok)throw new Error('content');return r.json()}).then(data=>{projects=(data.projects||[]).filter(p=>p.published&&p.photos?.length&&p.photos.every(mediaUrl));if(document.body.dataset.service)projects=projects.filter(p=>p.service===document.body.dataset.service);if(projects.length){document.querySelectorAll('[data-work-link]').forEach(x=>x.hidden=false);qs('#works')?.removeAttribute('hidden');renderProjects();}const s=data.settings||{};if(qs('#hero-title')&&s.headline)qs('#hero-title').textContent=s.headline;if(qs('#hero-description')&&s.description)qs('#hero-description').textContent=s.description;const photo=s.hero||(projects[0]?.photos[0]);if(qs('#hero-photo')&&mediaUrl(photo)){qs('#hero-photo').src=photo;qs('#hero-photo').alt=s.hero?'Фото об’єкта Омегабуд':projects[0].title;qs('#hero-caption').textContent='ОБ’ЄКТ ОМЕГАБУД · ФОТО РОБІТ';}gaId=s.gaId||'';loadGa();}).catch(()=>{/* Core services and contacts remain available without portfolio data. */});
+startAnalytics();
+})();
