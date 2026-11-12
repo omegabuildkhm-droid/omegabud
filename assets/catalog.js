@@ -1,6 +1,6 @@
 // Shared classification for the website, admin panel and API.
 export const objectTypeLabels={apartment:'Квартира',house:'Приватний будинок',office:'Офіс',commercial:'Комерційне приміщення',other:'Інший об’єкт',unspecified:'Тип не вказаний'};
-export const workTypeLabels={'napivsukha-stiazhka':'Напівсуха стяжка','natiazhni-steli':'Натяжні стелі','mashynna-shtukaturka':'Машинна штукатурка','maliarni-roboty':'Малярні роботи','plytkovi-roboty':'Плиткові роботи','hipsokartonni-roboty':'Гіпсокартонні роботи','demontazhni-roboty':'Демонтажні роботи'};
+export const workTypeLabels={'napivsukha-stiazhka':'Напівсуха стяжка','natiazhni-steli':'Натяжні стелі','mashynna-shtukaturka':'Машинна штукатурка','maliarni-roboty':'Малярні роботи','plytkovi-roboty':'Плиткові роботи','hipsokartonni-roboty':'Гіпсокартонні роботи','demontazhni-roboty':'Демонтажні роботи','elektromontazhni-roboty':'Електромонтажні роботи','muruvalni-roboty':'Мурувальні роботи'};
 export const serviceNames={'remont-kvartyr':'Ремонт квартир','remont-ofisiv':'Ремонт офісів і комерційних приміщень',...workTypeLabels};
 export const serviceIds=[...Object.keys(serviceNames),'consultation'];
 export function normalizeProject(project){
