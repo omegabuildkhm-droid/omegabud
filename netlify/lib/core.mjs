@@ -1,14 +1,19 @@
-export const serviceIds=['remont-kvartyr','remont-ofisiv','napivsukha-stiazhka','natiazhni-steli','mashynna-shtukaturka','maliarni-roboty','consultation'];
+import {serviceIds,objectTypeLabels,workTypeLabels,normalizeProject} from '../../assets/catalog.js';
+export {serviceIds};
 export const eventTypes=['page_view','service_impression','service_click','phone_click','email_click','cta_click','lead_submit'];
 export const text=(value,max=300)=>typeof value==='string'?value.trim().slice(0,max):'';
 export function validPhone(value){const digits=value.replace(/\D/g,'');return /^0\d{9}$/.test(digits)||/^380\d{9}$/.test(digits)||(/^\+[\d ()-]+$/.test(value)&&/^[1-9]\d{7,14}$/.test(digits));}
 export function validMedia(value){return /^\/\.netlify\/functions\/site-api\?action=media&id=[a-f0-9-]{36}\.(jpg|png|webp)$/.test(value);}
 export function projectInput(data){
- const title=text(data.title,120),service=text(data.service,60),photos=Array.isArray(data.photos)?data.photos.filter(validMedia).slice(0,12):[];
- if(!title||!serviceIds.includes(service)||service==='consultation')throw new Error('Вкажіть назву об’єкта та послугу.');
+ const title=text(data.title,120),classified=normalizeProject(data),photos=Array.isArray(data.photos)?data.photos.filter(validMedia).slice(0,12):[];
+ if(!title||classified.objectType==='unspecified'&&!classified.workTypes.length)throw new Error('Вкажіть назву, тип об’єкта або виконані роботи.');
+ if(data.objectType&&!Object.hasOwn(objectTypeLabels,data.objectType))throw new Error('Вкажіть коректний тип об’єкта.');
+ if(Array.isArray(data.workTypes)&&data.workTypes.some(id=>!Object.hasOwn(workTypeLabels,id)))throw new Error('Вкажіть коректні види робіт.');
  if(data.published&&!photos.length)throw new Error('Для публікації додайте хоча б одне фото.');
- return {title,service,photos,area:text(data.area,60),duration:text(data.duration,80),description:text(data.description,3000),published:data.published===true,updatedAt:new Date().toISOString()};
+ const service=classified.objectType==='apartment'?'remont-kvartyr':['office','commercial'].includes(classified.objectType)?'remont-ofisiv':classified.workTypes[0]||'';
+ return {title,service,objectType:classified.objectType,workTypes:classified.workTypes,photos,area:text(data.area,60),duration:text(data.duration,80),description:text(data.description,3000),published:data.published===true,updatedAt:new Date().toISOString()};
 }
+
 export function settingsInput(data){return {headline:text(data.headline,160),description:text(data.description,500),hero:validMedia(data.hero)?data.hero:'',gaId:/^G-[A-Z0-9]{5,20}$/.test(data.gaId||'')?data.gaId:'',searchVerification:/^[A-Za-z0-9_-]{10,100}$/.test(data.searchVerification||'')?data.searchVerification:''};}
 export function cleanEvent(data){
  if(!eventTypes.includes(data.type)||data.type==='lead_submit')throw new Error('Недопустима подія.');

@@ -1,4 +1,5 @@
 import {randomUUID} from 'node:crypto';
+import {normalizeProject} from '../../assets/catalog.js';
 import {MAX_PLAN_BYTES,quoteInput,validatePlans,LeadValidationError} from './lead-files.mjs';
 import {serviceIds,text,validPhone,projectInput,settingsInput,cleanEvent,eventInput,summarize} from './core.mjs';
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
@@ -17,7 +18,7 @@ export function makeHandler({getStore,authorize}){return async function handler(
    return new Response(item.data,{headers:{'Content-Type':item.metadata.type,'Cache-Control':'public,max-age=31536000,immutable','X-Content-Type-Options':'nosniff'}});
   }
   if(action==='public'&&req.method==='GET'){
-   const {blobs}=await store.list({prefix:'projects/'});const projects=(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(x=>x&&x.published).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
+   const {blobs}=await store.list({prefix:'projects/'});const projects=(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(x=>x&&x.published).map(normalizeProject).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
    const settings=await store.get('settings',{type:'json'})||{};return json({projects,settings});
   }
   if(action==='event'&&req.method==='POST'){
@@ -58,10 +59,10 @@ export function makeHandler({getStore,authorize}){return async function handler(
    return new Response(item.data,{headers:{'Content-Type':file.type,'Content-Disposition':"attachment; filename=plan."+file.key.split('.').pop()+"; filename*=UTF-8''"+encodeURIComponent(file.name).replace(/['()*]/g,c=>'%'+c.charCodeAt(0).toString(16).toUpperCase()),'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"sandbox; default-src 'none'"}});
   }
   if(action==='dashboard'&&req.method==='GET'){
-   const {blobs}=await store.list({prefix:'projects/'});return json({projects:(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(Boolean),settings:await store.get('settings',{type:'json'})||{}});
+   const {blobs}=await store.list({prefix:'projects/'});return json({projects:(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(Boolean).map(normalizeProject),settings:await store.get('settings',{type:'json'})||{}});
   }
   if(action==='project'&&req.method==='POST'){
-   const raw=await req.text();if(raw.length>12000)return fail('Запит завеликий.',413);const d=JSON.parse(raw);const id=/^[a-f0-9-]{36}$/.test(d.id||'')?d.id:randomUUID();const project={...projectInput(d),id};await store.setJSON('projects/'+id,project);return json({project});
+   const raw=await req.text();if(raw.length>12000)return fail('Запит завеликий.',413);const d=JSON.parse(raw);const id=/^[a-f0-9-]{36}$/.test(d.id||'')?d.id:randomUUID();const previous=await store.get('projects/'+id,{type:'json'});const project={...projectInput({...previous,...d}),id};await store.setJSON('projects/'+id,project);return json({project});
   }
   if(action==='settings'&&req.method==='POST'){
    const raw=await req.text();if(raw.length>5000)return fail('Запит завеликий.',413);const settings=settingsInput(JSON.parse(raw));await store.setJSON('settings',settings);return json({settings});
