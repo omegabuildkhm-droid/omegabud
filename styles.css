@@ -92,3 +92,9 @@
 .instagram-link:hover{background:#e5d7b5;color:#192d28;border-color:#e5d7b5}
 .instagram-link:focus-visible{outline:3px solid #fff;outline-offset:5px}
 @media(max-width:760px){.instagram-layout{grid-template-columns:1fr;gap:28px}.instagram-profile{padding:28px}.instagram-profile h3{font-size:30px}}
+
+.hero-topline{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin-bottom:20px}
+.hero-topline .eyebrow{margin:0}
+.hero-instagram{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:6px 12px;border:1px solid #a3ab9b;border-radius:4px;color:var(--ink);background:var(--paper);font-size:13px;line-height:1.2;white-space:nowrap}
+.hero-instagram:hover{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.hero-instagram:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
