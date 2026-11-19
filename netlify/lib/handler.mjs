@@ -1,3 +1,4 @@
+import {objectServiceTypes} from '../../assets/catalog.js';
 import {readWorkCatalog, saveWork, customWorkId} from './work-catalog.mjs';
 import {randomUUID} from 'node:crypto';
 import {normalizeProject} from '../../assets/catalog.js';
@@ -17,7 +18,7 @@ export function makeHandler({getStore,authorize,notifications}){return async fun
   let catalog;
   const works=()=>catalog??=readWorkCatalog(store);
   const workLabels=async()=>Object.fromEntries((await works()).map(item=>[item.id,item.short]));
-  const allowedService=async id=>id==='consultation'||(await works()).some(item=>item.id===id&&item.published)||['remont-kvartyr','remont-ofisiv'].includes(id);
+  const allowedService=async id=>id==='consultation'||(await works()).some(item=>item.id===id&&item.published)||Object.hasOwn(objectServiceTypes,id);
   if(action==='media'&&req.method==='GET'){
    const id=url.searchParams.get('id')||'';if(!/^[a-f0-9-]{36}\.(jpg|png|webp)$/.test(id))return fail('Невірне фото.',404);
    const item=await store.getWithMetadata('media/'+id,{type:'arrayBuffer'});if(!item)return fail('Фото не знайдено.',404);
@@ -25,7 +26,7 @@ export function makeHandler({getStore,authorize,notifications}){return async fun
   }
   if(action==='public'&&req.method==='GET'){
    const labels=Object.fromEntries((await works()).filter(item=>item.published).map(item=>[item.id,item.short]));
-   const {blobs}=await store.list({prefix:'projects/'});const projects=(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(x=>x&&x.published).map(withPortfolioDescription).map(project=>normalizeProject({...project,service:Object.hasOwn(labels,project.service) || ['remont-kvartyr','remont-ofisiv'].includes(project.service)?project.service:''},labels)).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
+   const {blobs}=await store.list({prefix:'projects/'});const projects=(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(x=>x&&x.published).map(withPortfolioDescription).map(project=>normalizeProject({...project,service:Object.hasOwn(labels,project.service) || Object.hasOwn(objectServiceTypes,project.service)?project.service:''},labels)).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
    const settings=await store.get('settings',{type:'json'})||{};return json({projects,settings,workTypes:labels});
   }
   if(action==='event'&&req.method==='POST'){
@@ -108,3 +109,4 @@ export function makeHandler({getStore,authorize,notifications}){return async fun
   return fail('Дію не знайдено.',404);
  }catch(error){console.error('Site API error:',error.name);if(error instanceof LeadValidationError)return fail(error.message);if(error instanceof SyntaxError)return fail('Некоректний запит.');if(error.message.startsWith('Вкажіть')||error.message.startsWith('Для публікації')||error.message==='Недопустима подія.')return fail(error.message);return fail('Сервіс тимчасово недоступний. Спробуйте ще раз або зателефонуйте.',503);}
 };}
+

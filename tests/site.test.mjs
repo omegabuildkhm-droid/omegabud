@@ -130,3 +130,27 @@ test('lead alerts use configured channels and provider failure does not duplicat
  assert.equal(deliveries[1].body.chat_id,'1');
  assert.ok(!JSON.stringify(deliveries).includes(lead.phone));
 });
+
+
+test('six object categories connect pages, sitemap and accepted estimate requests',async()=>{
+ const {services}=await import('../data/services.mjs');
+ const objects=services.filter(s=>s.group==='object');assert.equal(objects.length,6);
+ const home=await readFile('dist/index.html','utf8'),sitemap=await readFile('dist/sitemap.xml','utf8');
+ const quote=await readFile('dist/koshtorys/index.html','utf8');
+ for(const [i,s] of objects.entries()){
+  assert.ok(home.includes('/posluhy/'+s.id+'/'));assert.ok(sitemap.includes('/posluhy/'+s.id+'/'));
+  assert.ok(quote.includes('value="'+s.id+'"'));
+  const {handler}=setup();const response=await handler(multipartRequest({...quoteLead,service:s.id,requestId:'12345678-1234-1234-1234-123456789a'+String(i).padStart(2,'0')}));
+  assert.equal(response.status,200,s.id);
+ }
+ assert.ok(home.includes('плануєте облаштувати?'));
+});
+test('house, retail and beauty projects retain distinct categories and matching galleries',()=>{
+ for(const [objectType,service] of [['house','remont-budynkiv'],['retail','remont-mahazyniv-bankiv'],['beauty','remont-saloniv-krasy']]){
+  const p=projectInput({title:'Об’єкт',objectType,workTypes:[],photos:[],published:false});
+  assert.equal(p.service,service);assert.ok(matchesService(p,service));assert.equal(normalizeProject({service}).objectType,objectType);
+ }
+ assert.ok(matchesService({title:'Приватбанк',objectType:'commercial'},'remont-mahazyniv-bankiv'));
+ assert.ok(matchesService({title:'Салон краси',objectType:'commercial'},'remont-saloniv-krasy'));
+ assert.ok(!matchesService({title:'Офіс',objectType:'office'},'remont-saloniv-krasy'));
+});

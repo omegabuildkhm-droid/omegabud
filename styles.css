@@ -29,3 +29,7 @@
 .photo-viewer [data-next]{right:10px}
 .photo-viewer-caption{margin:0;padding:12px 18px;color:#fff;text-align:center;font-size:15px}
 @media(max-width:600px){.photo-viewer-stage img{height:min(65dvh,620px)}}
+
+
+/* Object categories: real portfolio photographs, responsive six-card grid. */
+.object-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.object-grid .service-card{min-width:0;min-height:300px}.object-grid .service-card h3{max-width:none;font-size:clamp(25px,2.2vw,32px)}.object-grid .service-card p{font-size:16px}.object-grid .service-category{font-size:14px}.object-grid .card-link{font-size:14px}.object-card-photo{display:block;aspect-ratio:4/3;margin:-30px -30px 24px;overflow:hidden}.object-card-photo img{display:block;width:100%;height:100%;object-fit:cover}@media(max-width:1100px){.object-card-photo{margin:-24px -24px 24px}}@media(max-width:950px){.object-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.object-grid{grid-template-columns:1fr}.object-card-photo{margin:-25px -25px 24px}}

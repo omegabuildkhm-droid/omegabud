@@ -12,7 +12,7 @@ export function projectInput(data,labels=workTypeLabels){
  if(data.photoWorkTypes!==undefined&&(!data.photoWorkTypes||typeof data.photoWorkTypes!=='object'||Array.isArray(data.photoWorkTypes)))throw new Error('Некоректні позначки фото.');
  if(photos.some(url=>data.photoWorkTypes&&Object.hasOwn(data.photoWorkTypes,url)&&(!Array.isArray(data.photoWorkTypes[url])||data.photoWorkTypes[url].some(id=>!Object.hasOwn(labels,id)))))throw new Error('Вкажіть коректні види робіт для фото.');
  if(data.published&&!photos.length)throw new Error('Для публікації додайте хоча б одне фото.');
- const service=classified.objectType==='apartment'?'remont-kvartyr':['office','commercial'].includes(classified.objectType)?'remont-ofisiv':classified.workTypes[0]||'';
+ const service=classified.objectType==='house'?'remont-budynkiv':classified.objectType==='retail'?'remont-mahazyniv-bankiv':classified.objectType==='beauty'?'remont-saloniv-krasy':classified.objectType==='apartment'?'remont-kvartyr':['office','commercial'].includes(classified.objectType)?'remont-ofisiv':classified.workTypes[0]||'';
  return {title,service,objectType:classified.objectType,workTypes:classified.workTypes,photos,photoWorkTypes:Object.fromEntries(photos.filter(url=>Object.hasOwn(classified.photoWorkTypes,url)).map(url=>[url,classified.photoWorkTypes[url]])),area:text(data.area,60),duration:text(data.duration,80),description:text(data.description,3000),published:data.published===true,updatedAt:new Date().toISOString()};
 }
 
@@ -32,3 +32,4 @@ export function summarize(events){
  for(const e of events){const day=e.at.slice(0,10);summary.days[day]??={views:0,leads:0};if(e.type==='page_view'){summary.pages[e.path]=(summary.pages[e.path]||0)+1;summary.sources[e.source||'Прямі переходи']=(summary.sources[e.source||'Прямі переходи']||0)+1;summary.days[day].views++;}if(e.type==='lead_submit')summary.days[day].leads++;if(e.service){const s=summary.services[e.service]??={impressions:0,clicks:0,leads:0};if(e.type==='service_impression')s.impressions++;if(e.type==='service_click')s.clicks++;if(e.type==='lead_submit')s.leads++;}}
  return summary;
 }
+
