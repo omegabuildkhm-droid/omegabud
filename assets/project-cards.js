@@ -10,7 +10,7 @@ const slugs={
 export const projectPath=p=>'/obiekty/'+(slugs[p.id]||encodeURIComponent(p.id))+'/';
 export const safePhoto=url=>/^\/\.netlify\/functions\/site-api\?action=media&id=[a-f0-9-]{36}\.(jpg|png|webp)$/.test(url||'');
 export function projectExcerpt(project){
- const text=String(project.description||'').replace(/\s+/g,' ').trim();
+ const text=String(project.summary||project.description||'').replace(/\s+/g,' ').trim();
  const sentences=text.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g)||[];
  const short=sentences.slice(0,2).join(' ').replace(/\s+/g,' ').trim();
  return short.length<=240?short:short.slice(0,237).replace(/\s+\S*$/,'')+'…';

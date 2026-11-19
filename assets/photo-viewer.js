@@ -65,7 +65,9 @@ document.addEventListener('click', event => {
   event.preventDefault();
   opener = link;
   projectTitle.textContent = group.querySelector('[data-project-title], .project-body h3')?.textContent || '';
-  projectDescription.textContent = group.querySelector('.project-description')?.textContent || '';
+  const description = group.querySelector('.project-description');
+  const paragraphs = description ? [...description.querySelectorAll('p')] : [];
+  projectDescription.textContent = paragraphs.length ? paragraphs.map(p => p.textContent).join('\n\n') : description?.textContent || '';
   projectDetails.hidden = !projectDescription.textContent;
   showPhoto(position);
   dialog.showModal();
