@@ -9,6 +9,8 @@ const portfolioDescriptions = new Map([
   }],
   ['5d79491a-d258-4129-bc94-b6426d34beff', {
     updatedAt: '2026-11-19T11:08:36.854Z',
+    previousUpdatedAt: '2026-11-19T11:32:14.303Z',
+    previousDescription: 'Виконали повний комплекс ремонтних робіт в офісних приміщеннях під ключ. У галереї — відкритий робочий простір, кабінет, коридор та санвузол після ремонту.',
     description: 'Виконали комплексний ремонт офісних приміщень під ключ. Роботи охопили підготовку приміщень, улаштування основи підлоги, оздоблення стін і стель, електромонтажні та сантехнічні роботи.\n\nУ робочих зонах виконали підготовку поверхонь і малярні роботи, уклали підлогову плитку. Оздоблення поєднує світлі стіни, акцентні ділянки та деревні фактури. У різних частинах офісу реалізовано стелі з відкритими комунікаціями й рейкові стелі з освітленням.\n\nСкляні перегородки відокремлюють кабінети від загального робочого простору та зберігають візуальну відкритість інтер’єру. У коридорі поєднали оздоблення стін під дерево, плиткову підлогу та рейкову стелю.\n\nУ санвузлах виконали облицювання стін і підлоги плиткою, сантехнічні та електромонтажні роботи. Сіре облицювання доповнюють кольорові перегородки й чорні деталі сантехніки.\n\nУ галереї представлені загальний офісний простір, окремий кабінет за скляною перегородкою, коридор і санвузол — різні зони одного реалізованого об’єкта.'
   }],
   ['f7b210c6-3815-48c6-83ff-8c114930ec44', {
@@ -20,8 +22,11 @@ const portfolioDescriptions = new Map([
 // Apply the initial copy only to the existing revisions with empty descriptions.
 // A subsequent admin save owns the field, including an intentional empty value.
 export function withPortfolioDescription(project) {
-  if (!project || project.description) return project;
+  if (!project) return project;
   const initial = portfolioDescriptions.get(project.id);
+  // Upgrade only the exact office copy and revision requested by the owner.
+  if (initial?.previousUpdatedAt === project.updatedAt && initial.previousDescription === project.description) return {...project, description: initial.description};
+  if (project.description) return project;
   if (!initial || initial.updatedAt !== project.updatedAt) return project;
   return {...project, description: initial.description};
 }
