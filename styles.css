@@ -77,3 +77,18 @@
 .project-related-services a{display:block;width:fit-content;margin-top:12px}
 @media(max-width:900px){.company-intro{grid-template-columns:1fr;gap:0}.company-intro>p{margin-top:0}.company-evidence{grid-template-columns:1fr 1fr}.company-team{grid-column:1/-1}.terms-grid{grid-template-columns:1fr}.terms-grid article{padding:24px}}
 @media(max-width:480px){.company-evidence{gap:24px}.company-stat strong{font-size:2.5rem}.project-related-services{padding:20px}}
+
+/* Super Pol Plus Instagram profile, on the floor screed page. */
+.screed-instagram{background:#edf0e6}
+.instagram-layout{display:grid;grid-template-columns:1.15fr 1fr;gap:64px;align-items:center}
+.instagram-copy>p:not(.eyebrow){max-width:560px;line-height:1.8}
+.instagram-profile{background:#192d28;color:#faf9f4;padding:40px;display:flex;align-items:flex-start;flex-direction:column;border-radius:4px}
+.instagram-icon{width:52px;height:52px;margin-bottom:24px;color:#d5c394}
+.instagram-profile-label{font-size:11px;line-height:1.6;letter-spacing:.14em;color:#d5c394}
+.instagram-profile h3{font-family:Georgia,serif;font-size:36px;font-weight:400;line-height:1.2;margin:16px 0 8px;color:#faf9f4}
+.instagram-profile p{color:#e3e8df;margin:8px 0;line-height:1.7}
+.instagram-profile .instagram-handle{font-size:20px;color:#faf9f4;overflow-wrap:anywhere}
+.instagram-link{background:#d5c394;color:#192d28;border:1px solid #d5c394;margin-top:24px;max-width:100%}
+.instagram-link:hover{background:#e5d7b5;color:#192d28;border-color:#e5d7b5}
+.instagram-link:focus-visible{outline:3px solid #fff;outline-offset:5px}
+@media(max-width:760px){.instagram-layout{grid-template-columns:1fr;gap:28px}.instagram-profile{padding:28px}.instagram-profile h3{font-size:30px}}
