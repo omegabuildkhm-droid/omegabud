@@ -2,6 +2,7 @@ import {objectServiceTypes} from '../../assets/catalog.js';
 import {readWorkCatalog, saveWork, customWorkId} from './work-catalog.mjs';
 import {randomUUID} from 'node:crypto';
 import {normalizeProject} from '../../assets/catalog.js';
+import {withPortfolioDetails} from '../../data/project-migrations.mjs';
 import {withPortfolioDescription} from '../../data/project-descriptions.mjs';
 import {MAX_PLAN_BYTES,quoteInput,validatePlans,LeadValidationError} from './lead-files.mjs';
 import {serviceIds,text,validPhone,projectInput,settingsInput,cleanEvent,eventInput,summarize} from './core.mjs';
@@ -26,7 +27,7 @@ export function makeHandler({getStore,authorize,notifications}){return async fun
   }
   if(action==='public'&&req.method==='GET'){
    const labels=Object.fromEntries((await works()).filter(item=>item.published).map(item=>[item.id,item.short]));
-   const {blobs}=await store.list({prefix:'projects/'});const projects=(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(x=>x&&x.published).map(withPortfolioDescription).map(project=>normalizeProject({...project,service:Object.hasOwn(labels,project.service) || Object.hasOwn(objectServiceTypes,project.service)?project.service:''},labels)).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
+   const {blobs}=await store.list({prefix:'projects/'});const projects=(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(x=>x&&x.published).map(withPortfolioDescription).map(withPortfolioDetails).map(project=>normalizeProject({...project,service:Object.hasOwn(labels,project.service) || Object.hasOwn(objectServiceTypes,project.service)?project.service:''},labels)).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
    const settings=await store.get('settings',{type:'json'})||{};return json({projects,settings,workTypes:labels});
   }
   if(action==='event'&&req.method==='POST'){
@@ -73,10 +74,10 @@ export function makeHandler({getStore,authorize,notifications}){return async fun
    await saveWork(store,JSON.parse(raw));return json({works:await readWorkCatalog(store)});
   }
   if(action==='dashboard'&&req.method==='GET'){
-   const labels=await workLabels();const {blobs}=await store.list({prefix:'projects/'});return json({projects:(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(Boolean).map(project=>normalizeProject(withPortfolioDescription(project),labels)),works:await works(),notificationStatus:notifications?.status||{email:false,telegram:false},settings:await store.get('settings',{type:'json'})||{}});
+   const labels=await workLabels();const {blobs}=await store.list({prefix:'projects/'});return json({projects:(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(Boolean).map(project=>normalizeProject(withPortfolioDetails(withPortfolioDescription(project)),labels)),works:await works(),notificationStatus:notifications?.status||{email:false,telegram:false},settings:await store.get('settings',{type:'json'})||{}});
   }
   if(action==='project'&&req.method==='POST'){
-   const raw=await req.text();if(raw.length>12000)return fail('Запит завеликий.',413);const d=JSON.parse(raw);const id=/^[a-f0-9-]{36}$/.test(d.id||'')?d.id:randomUUID();const previous=withPortfolioDescription(await store.get('projects/'+id,{type:'json'}));const project={...projectInput({...previous,...d},await workLabels()),id};await store.setJSON('projects/'+id,project);return json({project});
+   const raw=await req.text();if(raw.length>12000)return fail('Запит завеликий.',413);const d=JSON.parse(raw);const id=/^[a-f0-9-]{36}$/.test(d.id||'')?d.id:randomUUID();const previous=withPortfolioDetails(withPortfolioDescription(await store.get('projects/'+id,{type:'json'})));const project={...projectInput({...previous,...d},await workLabels()),id};await store.setJSON('projects/'+id,project);return json({project});
   }
   if(action==='settings'&&req.method==='POST'){
    const raw=await req.text();if(raw.length>5000)return fail('Запит завеликий.',413);const settings=settingsInput(JSON.parse(raw));await store.setJSON('settings',settings);return json({settings});

@@ -1,22 +1,36 @@
 import {readWorkCatalog,publicServices} from './work-catalog.mjs';
-import {renderHome,renderQuote,renderService,renderPrivacy,renderSitemap,renderNotFound} from '../../scripts/site-templates.mjs';
+import {renderHome,renderQuote,renderService,renderPrivacy,renderSitemap,renderNotFound,renderProject} from '../../scripts/site-templates.mjs';
+
+import {normalizeProject,matchesService,photosForWork,workTypeLabels} from '../../assets/catalog.js';
+import {projectPath,safePhoto} from '../../assets/project-cards.js';
+import {withPortfolioDescription} from '../../data/project-descriptions.mjs';
+import {withPortfolioDetails} from '../../data/project-migrations.mjs';
 
 export function makePagesHandler(getStore) {
   return async function pages(request) {
     try {
       const store = getStore({name:'omegabud-content',consistency:'strong'});
-      const services = publicServices(await readWorkCatalog(store));
+      const catalog=await readWorkCatalog(store);
+      const services=publicServices(catalog);
+      const {blobs}=await store.list({prefix:'projects/'});
+      const labels=Object.fromEntries(catalog.map(item=>[item.id,item.short]));
+      const projects=(await Promise.all(blobs.map(blob=>store.get(blob.key,{type:'json'}))))
+        .filter(p=>p?.published&&p.photos?.length&&p.photos.every(safePhoto))
+        .map(p=>normalizeProject(withPortfolioDetails(withPortfolioDescription(p)),labels))
+        .sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)));
       const path = new URL(request.url).pathname.replace(/\/index\.html$/,'').replace(/\/$/,'');
       const headers = {'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'};
-      if (path === '') return new Response(renderHome(services),{headers});
+      if (path === '') return new Response(renderHome(services,projects),{headers});
       if (path === '/koshtorys') return new Response(renderQuote(services),{headers});
       if (path === '/privacy') return new Response(renderPrivacy(services),{headers});
       if (path === '/sitemap.xml') {
         headers['Content-Type'] = 'application/xml; charset=utf-8';
-        return new Response(renderSitemap(services),{headers});
+        return new Response(renderSitemap(services,projects),{headers});
       }
       const service = services.find(item => path === '/posluhy/' + item.id);
-      if (service) return new Response(renderService(service,services),{headers});
+      if (service) return new Response(renderService(service,services,projects.filter(p=>matchesService(p,service.id)).map(p=>({...p,photos:Object.hasOwn(workTypeLabels,service.id)?photosForWork(p,service.id):p.photos})).filter(p=>p.photos.length)),{headers});
+      const project=projects.find(p=>path===projectPath(p).replace(/\/$/,''));
+      if(project)return new Response(renderProject(project,services,labels),{headers});
       return new Response(renderNotFound(services),{status:404,headers});
     } catch (error) {
       console.error('Catalog page error:',error.name);
@@ -26,3 +40,4 @@ export function makePagesHandler(getStore) {
     }
   };
 }
+

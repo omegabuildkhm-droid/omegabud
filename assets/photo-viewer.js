@@ -64,7 +64,7 @@ document.addEventListener('click', event => {
 
   event.preventDefault();
   opener = link;
-  projectTitle.textContent = group.querySelector('.project-body h3')?.textContent || '';
+  projectTitle.textContent = group.querySelector('[data-project-title], .project-body h3')?.textContent || '';
   projectDescription.textContent = group.querySelector('.project-description')?.textContent || '';
   projectDetails.hidden = !projectDescription.textContent;
   showPhoto(position);
@@ -103,3 +103,4 @@ stage.addEventListener('touchend', event => {
   if (Math.abs(dx) >= 45 && Math.abs(dx) > Math.abs(dy) * 1.5) move(dx < 0 ? 1 : -1);
 });
 stage.addEventListener('touchcancel', () => { touchStart = undefined; });
+
