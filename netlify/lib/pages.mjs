@@ -20,7 +20,10 @@ export function makePagesHandler(getStore) {
         .sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)));
       const path = new URL(request.url).pathname.replace(/\/index\.html$/,'').replace(/\/$/,'');
       const headers = {'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'};
-      if (path === '') return new Response(renderHome(services,projects),{headers});
+      if (path === '') {
+        const settings=await store.get('settings',{type:'json'})||{};
+        return new Response(renderHome(services,projects,settings),{headers});
+      }
       if (path === '/koshtorys') return new Response(renderQuote(services),{headers});
       if (path === '/privacy') return new Response(renderPrivacy(services),{headers});
       if (path === '/sitemap.xml') {
