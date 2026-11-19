@@ -6,6 +6,10 @@ dialog.innerHTML = `
     <span class="photo-viewer-count" aria-live="polite"></span>
     <button type="button" data-close aria-label="Закрити перегляд" autofocus>×</button>
   </div>
+  <section class="photo-viewer-project" hidden>
+    <h2></h2>
+    <p></p>
+  </section>
   <div class="photo-viewer-stage">
     <img alt="">
     <button type="button" data-prev aria-label="Попереднє фото">‹</button>
@@ -17,6 +21,9 @@ document.body.append(dialog);
 const image = dialog.querySelector('img');
 const count = dialog.querySelector('.photo-viewer-count');
 const caption = dialog.querySelector('.photo-viewer-caption');
+const projectDetails = dialog.querySelector('.photo-viewer-project');
+const projectTitle = projectDetails.querySelector('h2');
+const projectDescription = projectDetails.querySelector('p');
 const previous = dialog.querySelector('[data-prev]');
 const next = dialog.querySelector('[data-next]');
 const stage = dialog.querySelector('.photo-viewer-stage');
@@ -57,6 +64,9 @@ document.addEventListener('click', event => {
 
   event.preventDefault();
   opener = link;
+  projectTitle.textContent = group.querySelector('.project-body h3')?.textContent || '';
+  projectDescription.textContent = group.querySelector('.project-description')?.textContent || '';
+  projectDetails.hidden = !projectDescription.textContent;
   showPhoto(position);
   dialog.showModal();
   document.documentElement.classList.add('photo-viewer-open');

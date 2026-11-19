@@ -41,6 +41,20 @@ import {photosForWork,photoWorkTypesFor,projectWorkTypes} from '../assets/catalo
 const imageA='/.netlify/functions/site-api?action=media&id=11111111-1111-4111-8111-111111111111.jpg';
 const imageB='/.netlify/functions/site-api?action=media&id=22222222-2222-4222-8222-222222222222.jpg';
 const imageC='/.netlify/functions/site-api?action=media&id=33333333-3333-4333-8333-333333333333.jpg';
+test('an existing portfolio description is visible and can be cleared by the owner',async()=>{
+ const {handler,getStore}=setup();
+ const id='5d79491a-d258-4129-bc94-b6426d34beff';
+ const store=getStore('omegabud-content');
+ await store.setJSON('projects/'+id,{id,title:'Офіс',objectType:'office',photos:[imageA],published:true,description:'',updatedAt:'2026-11-19T11:08:36.854Z'});
+ const publicProject=async()=> (await (await handler(req('public'))).json()).projects[0];
+ const {description}=await publicProject();
+ assert.match(description,/під ключ/);
+ assert.equal((await (await handler(req('dashboard',undefined,true))).json()).projects[0].description,description);
+ assert.equal((await handler(req('project',{id,title:'Ремонт офісу'},true))).status,200);
+ assert.equal((await store.get('projects/'+id)).description,description);
+ assert.equal((await handler(req('project',{id,description:''},true))).status,200);
+ assert.equal((await publicProject()).description,'');
+});
 test('each photo appears only in its selected work galleries and the object retains all photos',()=>{
  const p={objectType:'office',workTypes:['maliarni-roboty'],photos:[imageA,imageB,imageC],photoWorkTypes:{[imageA]:['plytkovi-roboty','maliarni-roboty'],[imageB]:['hipsokartonni-roboty'],[imageC]:[]}};
  assert.deepEqual(photosForWork(p,'plytkovi-roboty'),[imageA]);assert.deepEqual(photosForWork(p,'hipsokartonni-roboty'),[imageB]);assert.deepEqual(photosForWork(p,'all'),[imageA,imageB,imageC]);assert.deepEqual(photosForWork(p,'maliarni-roboty'),[imageA]);assert.deepEqual(photoWorkTypesFor(p,imageC),[]);assert.ok(matchesService(p,'hipsokartonni-roboty'));assert.ok(matchesProjectFilters(p,'office','plytkovi-roboty'));assert.deepEqual(projectWorkTypes(p),['plytkovi-roboty','maliarni-roboty','hipsokartonni-roboty']);
