@@ -94,3 +94,25 @@ test('work catalog publishes and hides services across pages, quotes and portfol
  assert.equal((await save({id:builtin,published:true})).status,200);
  assert.equal((await page('/posluhy/'+builtin+'/')).status,200);
 });
+
+test('lead alerts use configured channels and provider failure does not duplicate or lose a lead',async()=>{
+ const {getStore,stores}=setup();
+ const {createLeadNotifications}=await import('../netlify/lib/lead-notifications.mjs');
+ const deliveries=[];
+ const notifications=createLeadNotifications({
+  RESEND_API_KEY:'fake',LEAD_EMAIL_FROM:'notify@example.com',LEAD_EMAIL_TO:'owner@example.com',
+  TELEGRAM_BOT_TOKEN:'fake',TELEGRAM_CHAT_ID:'1'
+ },async(url,options)=>{
+  deliveries.push({url,body:JSON.parse(options.body)});
+  if(url.includes('telegram'))throw new Error('provider offline');
+  return new Response(null,{status:200});
+ });
+ const handler=makeHandler({getStore,authorize:async()=>false,notifications});
+ assert.equal((await handler(req('lead',lead))).status,200);
+ assert.equal((await handler(req('lead',lead))).status,200);
+ assert.equal(stores.get('omegabud-leads').size,1);
+ assert.equal(deliveries.length,2);
+ assert.deepEqual(deliveries[0].body.to,['owner@example.com']);
+ assert.equal(deliveries[1].body.chat_id,'1');
+ assert.ok(!JSON.stringify(deliveries).includes(lead.phone));
+});

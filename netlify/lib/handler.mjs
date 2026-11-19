@@ -5,7 +5,7 @@ import {MAX_PLAN_BYTES,quoteInput,validatePlans,LeadValidationError} from './lea
 import {serviceIds,text,validPhone,projectInput,settingsInput,cleanEvent,eventInput,summarize} from './core.mjs';
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const fail=(message,status=400)=>json({error:message},status);
-export function makeHandler({getStore,authorize}){return async function handler(req){
+export function makeHandler({getStore,authorize,notifications}){return async function handler(req){
  const url=new URL(req.url),action=url.searchParams.get('action')||'public';
  try{
   if(req.method==='OPTIONS')return new Response(null,{status:405});
@@ -49,6 +49,7 @@ export function makeHandler({getStore,authorize}){return async function handler(
     const written=await leads.setJSON(key,{id,name,phone,service,...quote,details:text(d.details,3000),attachments,createdAt,status:'new'},{onlyIfNew:true});
     if(written?.modified===false){await Promise.all(attachments.map(file=>leads.delete(file.key)));return json({ok:true,id});}
    }catch(error){await Promise.allSettled(attachments.map(file=>leads.delete(file.key)));throw error;}
+   try { await notifications?.notify(id); } catch { console.warn('Lead notifications unavailable'); }
    if(d.analytics===true&&/^[a-f0-9-]{36}$/.test(d.session||'')){
     try{const e=eventInput({...d,type:'lead_submit'},[service]);await getStore('omegabud-events').setJSON(`events/${e.at.slice(0,10)}/${id}`,e);}catch{/* Keep a saved request successful if analytics is unavailable. */}
    }
@@ -70,7 +71,7 @@ export function makeHandler({getStore,authorize}){return async function handler(
    await saveWork(store,JSON.parse(raw));return json({works:await readWorkCatalog(store)});
   }
   if(action==='dashboard'&&req.method==='GET'){
-   const labels=await workLabels();const {blobs}=await store.list({prefix:'projects/'});return json({projects:(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(Boolean).map(project=>normalizeProject(project,labels)),works:await works(),settings:await store.get('settings',{type:'json'})||{}});
+   const labels=await workLabels();const {blobs}=await store.list({prefix:'projects/'});return json({projects:(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(Boolean).map(project=>normalizeProject(project,labels)),works:await works(),notificationStatus:notifications?.status||{email:false,telegram:false},settings:await store.get('settings',{type:'json'})||{}});
   }
   if(action==='project'&&req.method==='POST'){
    const raw=await req.text();if(raw.length>12000)return fail('Запит завеликий.',413);const d=JSON.parse(raw);const id=/^[a-f0-9-]{36}$/.test(d.id||'')?d.id:randomUUID();const previous=await store.get('projects/'+id,{type:'json'});const project={...projectInput({...previous,...d},await workLabels()),id};await store.setJSON('projects/'+id,project);return json({project});
