@@ -57,3 +57,40 @@ test('clearing tags and removing photos drops gallery entries without losing rem
 test('legacy projects retain gallery display until photo tags are explicitly selected or cleared',()=>{
  const p={service:'plytkovi-roboty',photos:[imageA,imageB]};assert.deepEqual(photosForWork(p,'plytkovi-roboty'),[imageA,imageB]);const updated={...p,photoWorkTypes:{[imageA]:[]}};assert.deepEqual(photosForWork(updated,'plytkovi-roboty'),[imageB]);assert.equal(p.photoWorkTypes,undefined);
 });
+
+test('work catalog publishes and hides services across pages, quotes and portfolio', async () => {
+ const {handler,getStore}=setup();
+ const {makePagesHandler}=await import('../netlify/lib/pages.mjs');
+ const page=path=>makePagesHandler(getStore)(new Request('https://example.com'+path));
+ const id='work-test-catalog';
+ const draft={id,create:true,name:'Монтаж <тест>',lead:'Опис <script>чернетки</script>',includes:'Підготовка\nМонтаж',price:'Після огляду',published:false};
+ const save=data=>handler(req('work-catalog',data,true));
+ assert.equal((await handler(req('work-catalog',draft))).status,401);
+ assert.equal((await save(draft)).status,200);
+ assert.equal((await save(draft)).status,400);
+ assert.equal((await page('/posluhy/'+id+'/')).status,404);
+ assert.equal((await handler(req('lead',{...lead,service:id}))).status,400);
+ const project=await handler(req('project',{title:'Об’єкт',objectType:'office',photos:[imageA],photoWorkTypes:{[imageA]:[id]},published:true},true));
+ assert.equal(project.status,200);
+ assert.equal((await save({id,statusOnly:true,published:true})).status,200);
+ for(const path of ['/','/koshtorys/','/sitemap.xml','/posluhy/'+id+'/']){
+  const response=await page(path);
+  assert.equal(response.status,200);
+  const html=await response.text();
+  assert.ok(html.includes(id));
+  assert.ok(!html.includes('<script>чернетки</script>'));
+ }
+ assert.equal((await handler(req('lead',{...lead,service:id}))).status,200);
+ assert.deepEqual((await (await handler(req('public'))).json()).projects[0].photoWorkTypes[imageA],[id]);
+ assert.equal((await save({id,statusOnly:true,published:false})).status,200);
+ assert.equal((await page('/posluhy/'+id+'/index.html')).status,404);
+ for(const path of ['/','/koshtorys/','/sitemap.xml'])assert.ok(!(await (await page(path)).text()).includes(id));
+ assert.deepEqual((await (await handler(req('public'))).json()).projects[0].photoWorkTypes[imageA],[]);
+ assert.deepEqual((await (await handler(req('dashboard',null,true))).json()).projects[0].photoWorkTypes[imageA],[id]);
+ const builtin='muruvalni-roboty';
+ assert.equal((await page('/posluhy/'+builtin+'/')).status,200);
+ assert.equal((await save({id:builtin,published:false})).status,200);
+ assert.equal((await page('/posluhy/'+builtin+'/')).status,404);
+ assert.equal((await save({id:builtin,published:true})).status,200);
+ assert.equal((await page('/posluhy/'+builtin+'/')).status,200);
+});

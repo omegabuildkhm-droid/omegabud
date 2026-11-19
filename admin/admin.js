@@ -116,7 +116,7 @@ async function openAdmin() {
 }
 
 function showView(view) {
-  ["pages", "editor", "seo", "media", "portfolio", "leads", "analytics", "settings"].forEach(name => {
+  ["pages", "editor", "seo", "media", "portfolio", "leads", "analytics", "settings", "workCatalog"].forEach(name => {
     document.getElementById(name + "View").style.display =
       name === view ? "block" : "none";
 

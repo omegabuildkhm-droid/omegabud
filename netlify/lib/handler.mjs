@@ -1,3 +1,4 @@
+import {readWorkCatalog, saveWork, customWorkId} from './work-catalog.mjs';
 import {randomUUID} from 'node:crypto';
 import {normalizeProject} from '../../assets/catalog.js';
 import {MAX_PLAN_BYTES,quoteInput,validatePlans,LeadValidationError} from './lead-files.mjs';
@@ -12,17 +13,22 @@ export function makeHandler({getStore,authorize}){return async function handler(
   if(req.method==='POST'&&req.headers.get('origin')!==url.origin)return fail('Запит дозволено лише з цього сайту.',403);
   const length=Number(req.headers.get('content-length')||0);if(length>(action==='lead'?MAX_PLAN_BYTES+80000:3200000))return fail('Запит завеликий.',413);
   const store=getStore({name:'omegabud-content',consistency:'strong'});
+  let catalog;
+  const works=()=>catalog??=readWorkCatalog(store);
+  const workLabels=async()=>Object.fromEntries((await works()).map(item=>[item.id,item.short]));
+  const allowedService=async id=>id==='consultation'||(await works()).some(item=>item.id===id&&item.published)||['remont-kvartyr','remont-ofisiv'].includes(id);
   if(action==='media'&&req.method==='GET'){
    const id=url.searchParams.get('id')||'';if(!/^[a-f0-9-]{36}\.(jpg|png|webp)$/.test(id))return fail('Невірне фото.',404);
    const item=await store.getWithMetadata('media/'+id,{type:'arrayBuffer'});if(!item)return fail('Фото не знайдено.',404);
    return new Response(item.data,{headers:{'Content-Type':item.metadata.type,'Cache-Control':'public,max-age=31536000,immutable','X-Content-Type-Options':'nosniff'}});
   }
   if(action==='public'&&req.method==='GET'){
-   const {blobs}=await store.list({prefix:'projects/'});const projects=(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(x=>x&&x.published).map(normalizeProject).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
-   const settings=await store.get('settings',{type:'json'})||{};return json({projects,settings});
+   const labels=Object.fromEntries((await works()).filter(item=>item.published).map(item=>[item.id,item.short]));
+   const {blobs}=await store.list({prefix:'projects/'});const projects=(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(x=>x&&x.published).map(project=>normalizeProject({...project,service:Object.hasOwn(labels,project.service) || ['remont-kvartyr','remont-ofisiv'].includes(project.service)?project.service:''},labels)).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
+   const settings=await store.get('settings',{type:'json'})||{};return json({projects,settings,workTypes:labels});
   }
   if(action==='event'&&req.method==='POST'){
-   const raw=await req.text();if(raw.length>2000)return fail('Запит завеликий.',413);const event=cleanEvent(JSON.parse(raw));if(!event.session)return fail('Немає сеансу.');
+   const raw=await req.text();if(raw.length>2000)return fail('Запит завеликий.',413);const data=JSON.parse(raw);const ids=customWorkId.test(data.service)&&await allowedService(data.service)?[...serviceIds,data.service]:serviceIds;const event=cleanEvent(data,ids);if(!event.session)return fail('Немає сеансу.');
    const events=getStore('omegabud-events');await events.setJSON(`events/${event.at.slice(0,10)}/${randomUUID()}`,event);return json({ok:true});
   }
   if(action==='lead'&&req.method==='POST'){
@@ -32,7 +38,7 @@ export function makeHandler({getStore,authorize}){return async function handler(
    }else{const raw=await req.text();if(raw.length>16000)return fail('Запит завеликий.',413);d=JSON.parse(raw);}
    if(d.website)return fail('Не вдалося надіслати заявку.');
    const name=text(d.name,100),phone=text(d.phone,24),service=text(d.service,60);
-   if(!name||!validPhone(phone)||!serviceIds.includes(service)||d.privacy!==true)return fail('Перевірте ім’я, телефон, послугу та згоду на обробку даних.');
+   if(!name||!validPhone(phone)||!await allowedService(service)||d.privacy!==true)return fail('Перевірте ім’я, телефон, послугу та згоду на обробку даних.');
    const quote=quoteInput(d),plans=await validatePlans(files);
    const id=/^[a-f0-9-]{36}$/.test(d.requestId||'')?d.requestId:randomUUID(),createdAt=new Date().toISOString(),leads=getStore({name:'omegabud-leads',consistency:'strong'});
    const key='leads/'+createdAt.slice(0,10)+'/'+id;
@@ -44,7 +50,7 @@ export function makeHandler({getStore,authorize}){return async function handler(
     if(written?.modified===false){await Promise.all(attachments.map(file=>leads.delete(file.key)));return json({ok:true,id});}
    }catch(error){await Promise.allSettled(attachments.map(file=>leads.delete(file.key)));throw error;}
    if(d.analytics===true&&/^[a-f0-9-]{36}$/.test(d.session||'')){
-    try{const e=eventInput({...d,type:'lead_submit'});await getStore('omegabud-events').setJSON(`events/${e.at.slice(0,10)}/${id}`,e);}catch{/* Keep a saved request successful if analytics is unavailable. */}
+    try{const e=eventInput({...d,type:'lead_submit'},[service]);await getStore('omegabud-events').setJSON(`events/${e.at.slice(0,10)}/${id}`,e);}catch{/* Keep a saved request successful if analytics is unavailable. */}
    }
    return json({ok:true,id});
   }
@@ -58,11 +64,16 @@ export function makeHandler({getStore,authorize}){return async function handler(
    const item=await leads.getWithMetadata(file.key,{type:'arrayBuffer'});if(!item)return fail('Файл не знайдено.',404);
    return new Response(item.data,{headers:{'Content-Type':file.type,'Content-Disposition':"attachment; filename=plan."+file.key.split('.').pop()+"; filename*=UTF-8''"+encodeURIComponent(file.name).replace(/['()*]/g,c=>'%'+c.charCodeAt(0).toString(16).toUpperCase()),'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"sandbox; default-src 'none'"}});
   }
+  if(action==='work-catalog'&&req.method==='GET')return json({works:await works()});
+  if(action==='work-catalog'&&req.method==='POST'){
+   const raw=await req.text();if(raw.length>8000)return fail('Запит завеликий.',413);
+   await saveWork(store,JSON.parse(raw));return json({works:await readWorkCatalog(store)});
+  }
   if(action==='dashboard'&&req.method==='GET'){
-   const {blobs}=await store.list({prefix:'projects/'});return json({projects:(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(Boolean).map(normalizeProject),settings:await store.get('settings',{type:'json'})||{}});
+   const labels=await workLabels();const {blobs}=await store.list({prefix:'projects/'});return json({projects:(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(Boolean).map(project=>normalizeProject(project,labels)),works:await works(),settings:await store.get('settings',{type:'json'})||{}});
   }
   if(action==='project'&&req.method==='POST'){
-   const raw=await req.text();if(raw.length>12000)return fail('Запит завеликий.',413);const d=JSON.parse(raw);const id=/^[a-f0-9-]{36}$/.test(d.id||'')?d.id:randomUUID();const previous=await store.get('projects/'+id,{type:'json'});const project={...projectInput({...previous,...d}),id};await store.setJSON('projects/'+id,project);return json({project});
+   const raw=await req.text();if(raw.length>12000)return fail('Запит завеликий.',413);const d=JSON.parse(raw);const id=/^[a-f0-9-]{36}$/.test(d.id||'')?d.id:randomUUID();const previous=await store.get('projects/'+id,{type:'json'});const project={...projectInput({...previous,...d},await workLabels()),id};await store.setJSON('projects/'+id,project);return json({project});
   }
   if(action==='settings'&&req.method==='POST'){
    const raw=await req.text();if(raw.length>5000)return fail('Запит завеликий.',413);const settings=settingsInput(JSON.parse(raw));await store.setJSON('settings',settings);return json({settings});

@@ -4,26 +4,26 @@ export const eventTypes=['page_view','service_impression','service_click','phone
 export const text=(value,max=300)=>typeof value==='string'?value.trim().slice(0,max):'';
 export function validPhone(value){const digits=value.replace(/\D/g,'');return /^0\d{9}$/.test(digits)||/^380\d{9}$/.test(digits)||(/^\+[\d ()-]+$/.test(value)&&/^[1-9]\d{7,14}$/.test(digits));}
 export function validMedia(value){return /^\/\.netlify\/functions\/site-api\?action=media&id=[a-f0-9-]{36}\.(jpg|png|webp)$/.test(value);}
-export function projectInput(data){
- const title=text(data.title,120),classified=normalizeProject(data),photos=Array.isArray(data.photos)?data.photos.filter(validMedia).slice(0,12):[];
- if(!title||classified.objectType==='unspecified'&&!projectWorkTypes(classified).length)throw new Error('Вкажіть назву, тип об’єкта або виконані роботи.');
+export function projectInput(data,labels=workTypeLabels){
+ const title=text(data.title,120),classified=normalizeProject(data,labels),photos=Array.isArray(data.photos)?data.photos.filter(validMedia).slice(0,12):[];
+ if(!title||classified.objectType==='unspecified'&&!projectWorkTypes(classified,labels).length)throw new Error('Вкажіть назву, тип об’єкта або виконані роботи.');
  if(data.objectType&&!Object.hasOwn(objectTypeLabels,data.objectType))throw new Error('Вкажіть коректний тип об’єкта.');
- if(Array.isArray(data.workTypes)&&data.workTypes.some(id=>!Object.hasOwn(workTypeLabels,id)))throw new Error('Вкажіть коректні види робіт.');
+ if(Array.isArray(data.workTypes)&&data.workTypes.some(id=>!Object.hasOwn(labels,id)))throw new Error('Вкажіть коректні види робіт.');
  if(data.photoWorkTypes!==undefined&&(!data.photoWorkTypes||typeof data.photoWorkTypes!=='object'||Array.isArray(data.photoWorkTypes)))throw new Error('Некоректні позначки фото.');
- if(photos.some(url=>data.photoWorkTypes&&Object.hasOwn(data.photoWorkTypes,url)&&(!Array.isArray(data.photoWorkTypes[url])||data.photoWorkTypes[url].some(id=>!Object.hasOwn(workTypeLabels,id)))))throw new Error('Вкажіть коректні види робіт для фото.');
+ if(photos.some(url=>data.photoWorkTypes&&Object.hasOwn(data.photoWorkTypes,url)&&(!Array.isArray(data.photoWorkTypes[url])||data.photoWorkTypes[url].some(id=>!Object.hasOwn(labels,id)))))throw new Error('Вкажіть коректні види робіт для фото.');
  if(data.published&&!photos.length)throw new Error('Для публікації додайте хоча б одне фото.');
  const service=classified.objectType==='apartment'?'remont-kvartyr':['office','commercial'].includes(classified.objectType)?'remont-ofisiv':classified.workTypes[0]||'';
  return {title,service,objectType:classified.objectType,workTypes:classified.workTypes,photos,photoWorkTypes:Object.fromEntries(photos.filter(url=>Object.hasOwn(classified.photoWorkTypes,url)).map(url=>[url,classified.photoWorkTypes[url]])),area:text(data.area,60),duration:text(data.duration,80),description:text(data.description,3000),published:data.published===true,updatedAt:new Date().toISOString()};
 }
 
 export function settingsInput(data){return {headline:text(data.headline,160),description:text(data.description,500),hero:validMedia(data.hero)?data.hero:'',gaId:/^G-[A-Z0-9]{5,20}$/.test(data.gaId||'')?data.gaId:'',searchVerification:/^[A-Za-z0-9_-]{10,100}$/.test(data.searchVerification||'')?data.searchVerification:''};}
-export function cleanEvent(data){
+export function cleanEvent(data,ids=serviceIds){
  if(!eventTypes.includes(data.type)||data.type==='lead_submit')throw new Error('Недопустима подія.');
- return eventInput(data);
+ return eventInput(data,ids);
 }
-export function eventInput(data){
+export function eventInput(data,ids=serviceIds){
  const path=text(data.path,180).split(/[?#]/)[0];
- return {type:data.type,path:/^\/(?:[a-z0-9/_-]*)$/.test(path)?path:'/',session:/^[a-f0-9-]{36}$/.test(data.session||'')?data.session:'',service:serviceIds.includes(data.service)?data.service:'',source:text(data.source,100).replace(/[^a-zA-Z0-9._-]/g,''),campaign:text(data.campaign,100).replace(/[^a-zA-Z0-9._-]/g,''),at:new Date().toISOString()};
+ return {type:data.type,path:/^\/(?:[a-z0-9/_-]*)$/.test(path)?path:'/',session:/^[a-f0-9-]{36}$/.test(data.session||'')?data.session:'',service:ids.includes(data.service)?data.service:'',source:text(data.source,100).replace(/[^a-zA-Z0-9._-]/g,''),campaign:text(data.campaign,100).replace(/[^a-zA-Z0-9._-]/g,''),at:new Date().toISOString()};
 }
 export function summarize(events){
  const views=events.filter(e=>e.type==='page_view'),sessions=new Set(views.map(e=>e.session).filter(Boolean));
