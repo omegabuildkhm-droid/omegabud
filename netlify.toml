@@ -15,3 +15,16 @@
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
     Cache-Control = "no-store"
+
+
+# Keep existing links and search results on the canonical custom domain.
+[[redirects]]
+  from = "https://tiny-truffle-95ce1a.netlify.app/*"
+  to = "https://omegabud.km.ua/:splat"
+  status = 301
+  force = true
+[[redirects]]
+  from = "http://tiny-truffle-95ce1a.netlify.app/*"
+  to = "https://omegabud.km.ua/:splat"
+  status = 301
+  force = true

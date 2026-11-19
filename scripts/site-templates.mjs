@@ -6,7 +6,7 @@ import {screedOverview,screedGallery,screedSteps,screedReadiness,screedInstagram
 import {quoteForm} from './quote-template.mjs';
 import {objectTypeLabels} from '../assets/catalog.js';
 import {renderProjectCards,projectPath,projectExcerpt,safePhoto} from '../assets/project-cards.js';
-const base='https://tiny-truffle-95ce1a.netlify.app';
+const base='https://omegabud.km.ua';
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function cardsFor(items){return items.map(s=>`<a class="service-card" href="/posluhy/${s.id}/" data-track="service_click" data-service="${s.id}">${s.group==='object'?'<span class="object-card-photo" hidden></span>':`<span class="card-top">${esc(s.tag)}<span>→</span></span>`}<span class="service-category">${esc(s.category)}</span><h3>${esc(s.name)}</h3><p>${esc(s.lead.split('. ')[0])}.</p><span class="card-link">Дізнатися більше <span>→</span></span></a>`).join('');}
 

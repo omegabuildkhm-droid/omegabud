@@ -1,4 +1,4 @@
-const adminUrl = 'https://tiny-truffle-95ce1a.netlify.app/admin/';
+const adminUrl = 'https://omegabud.km.ua/admin/';
 const subject = 'Нова заявка на сайті Омегабуд';
 const message = subject + '.\nВідкрийте розділ «Заявки» у кабінеті:\n' + adminUrl;
 
@@ -37,3 +37,4 @@ export function createLeadNotifications(env, request = fetch) {
     }
   };
 }
+

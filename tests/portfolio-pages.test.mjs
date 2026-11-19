@@ -33,7 +33,7 @@ test('published project pages and sitemap contain full content while drafts rema
  const html=await response.text();
  assert.ok(html.includes('Повний опис із деталями'));
  assert.equal((html.match(/<h1[ >]/g)||[]).length,1);
- assert.ok(html.includes('rel="canonical" href="https://tiny-truffle-95ce1a.netlify.app/obiekty/remont-ofisu/"'));
+ assert.ok(html.includes('rel="canonical" href="https://omegabud.km.ua/obiekty/remont-ofisu/"'));
  assert.ok(html.includes('og:image'));
  assert.ok(html.includes('data-photo-index="0"'));
  assert.equal((await page(projectPath(draft))).status,404);
