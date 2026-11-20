@@ -16,6 +16,7 @@ await mkdir('dist/privacy',{recursive:true});
 await writeFile('dist/privacy/index.html',renderPrivacy(services));
 await writeFile('dist/404.html',renderNotFound(services));
 await cp('dist/index.html','index.html');
+await cp('googledd35b3ce990ac531.html','dist/googledd35b3ce990ac531.html');
 await cp('styles.css','dist/styles.css');await cp('script.js','dist/script.js');await cp('assets','dist/assets',{recursive:true});await cp('admin','dist/admin',{recursive:true});
 await writeFile('dist/robots.txt',`User-agent: *\nAllow: /\nDisallow: /admin/\nSitemap: ${base}/sitemap.xml\n`);
 await writeFile('dist/sitemap.xml',renderSitemap(services));
