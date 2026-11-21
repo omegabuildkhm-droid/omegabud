@@ -16,6 +16,10 @@ export function makeHandler({getStore,authorize,notifications}){return async fun
   if(req.method==='POST'&&req.headers.get('origin')!==url.origin)return fail('Запит дозволено лише з цього сайту.',403);
   const length=Number(req.headers.get('content-length')||0);if(length>(action==='lead'?MAX_PLAN_BYTES+80000:3200000))return fail('Запит завеликий.',413);
   const store=getStore({name:'omegabud-content',consistency:'strong'});
+  const readSettings=async()=>({
+   gaId:'G-XVT3TVY7YY',
+   ...await store.get('settings',{type:'json'})
+  });
   let catalog;
   const works=()=>catalog??=readWorkCatalog(store);
   const workLabels=async()=>Object.fromEntries((await works()).map(item=>[item.id,item.short]));
@@ -28,7 +32,7 @@ export function makeHandler({getStore,authorize,notifications}){return async fun
   if(action==='public'&&req.method==='GET'){
    const labels=Object.fromEntries((await works()).filter(item=>item.published).map(item=>[item.id,item.short]));
    const {blobs}=await store.list({prefix:'projects/'});const projects=(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(x=>x&&x.published).map(withPortfolioDescription).map(withPortfolioDetails).map(project=>normalizeProject({...project,service:Object.hasOwn(labels,project.service) || Object.hasOwn(objectServiceTypes,project.service)?project.service:''},labels)).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
-   const settings=await store.get('settings',{type:'json'})||{};return json({projects,settings,workTypes:labels});
+   const settings=await readSettings();return json({projects,settings,workTypes:labels});
   }
   if(action==='event'&&req.method==='POST'){
    const raw=await req.text();if(raw.length>2000)return fail('Запит завеликий.',413);const data=JSON.parse(raw);const ids=customWorkId.test(data.service)&&await allowedService(data.service)?[...serviceIds,data.service]:serviceIds;const event=cleanEvent(data,ids);if(!event.session)return fail('Немає сеансу.');
@@ -74,7 +78,7 @@ export function makeHandler({getStore,authorize,notifications}){return async fun
    await saveWork(store,JSON.parse(raw));return json({works:await readWorkCatalog(store)});
   }
   if(action==='dashboard'&&req.method==='GET'){
-   const labels=await workLabels();const {blobs}=await store.list({prefix:'projects/'});return json({projects:(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(Boolean).map(project=>normalizeProject(withPortfolioDetails(withPortfolioDescription(project)),labels)),works:await works(),notificationStatus:notifications?.status||{email:false,telegram:false},settings:await store.get('settings',{type:'json'})||{}});
+   const labels=await workLabels();const {blobs}=await store.list({prefix:'projects/'});return json({projects:(await Promise.all(blobs.map(x=>store.get(x.key,{type:'json'})))).filter(Boolean).map(project=>normalizeProject(withPortfolioDetails(withPortfolioDescription(project)),labels)),works:await works(),notificationStatus:notifications?.status||{email:false,telegram:false},settings:await readSettings()});
   }
   if(action==='project'&&req.method==='POST'){
    const raw=await req.text();if(raw.length>12000)return fail('Запит завеликий.',413);const d=JSON.parse(raw);const id=/^[a-f0-9-]{36}$/.test(d.id||'')?d.id:randomUUID();const previous=withPortfolioDetails(withPortfolioDescription(await store.get('projects/'+id,{type:'json'})));const project={...projectInput({...previous,...d},await workLabels()),id};await store.setJSON('projects/'+id,project);return json({project});
