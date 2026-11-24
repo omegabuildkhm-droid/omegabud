@@ -47,13 +47,20 @@ export function makeHandler({getStore,authorize,notifications}){return async fun
    const name=text(d.name,100),phone=text(d.phone,24),service=text(d.service,60);
    if(!name||!validPhone(phone)||!await allowedService(service)||d.privacy!==true)return fail('Перевірте ім’я, телефон, послугу та згоду на обробку даних.');
    const quote=quoteInput(d),plans=await validatePlans(files);
+   const details=[text(d.details,3000)];
+   if(service==='napivsukha-stiazhka'){
+    const floor=text(d.screedFloor,40);
+    const heating=new Map([['yes','Є або буде'],['no','Немає й не планується'],['unknown','Ще не вирішили']]).get(d.screedHeating);
+    if(floor)details.push('Поверх: '+floor);
+    if(heating)details.push('Тепла підлога: '+heating);
+   }
    const id=/^[a-f0-9-]{36}$/.test(d.requestId||'')?d.requestId:randomUUID(),createdAt=new Date().toISOString(),leads=getStore({name:'omegabud-leads',consistency:'strong'});
    const key='leads/'+createdAt.slice(0,10)+'/'+id;
    if(await leads.get(key,{type:'json'}))return json({ok:true,id});
    const attachments=[];
    try{
     for(const plan of plans){const fileId=randomUUID(),fileKey='attachments/'+id+'/'+fileId+'.'+plan.extension;await leads.set(fileKey,plan.bytes,{metadata:{type:plan.type,name:plan.name}});attachments.push({id:fileId,key:fileKey,name:plan.name,type:plan.type,size:plan.size});}
-    const written=await leads.setJSON(key,{id,name,phone,service,...quote,details:text(d.details,3000),attachments,createdAt,status:'new'},{onlyIfNew:true});
+    const written=await leads.setJSON(key,{id,name,phone,service,...quote,details:details.filter(Boolean).join('\n'),attachments,createdAt,status:'new'},{onlyIfNew:true});
     if(written?.modified===false){await Promise.all(attachments.map(file=>leads.delete(file.key)));return json({ok:true,id});}
    }catch(error){await Promise.allSettled(attachments.map(file=>leads.delete(file.key)));throw error;}
    try { await notifications?.notify(id); } catch { console.warn('Lead notifications unavailable'); }

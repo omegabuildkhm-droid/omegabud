@@ -109,3 +109,5 @@
  .header .header-inner-social nav.open{display:flex}
  .header-inner-social nav a{padding:8px}
 }
+
+#quote-screed[hidden]{display:none}

@@ -31,7 +31,13 @@ export function makePagesHandler(getStore) {
         return new Response(renderSitemap(services,projects),{headers});
       }
       const service = services.find(item => path === '/posluhy/' + item.id);
-      if (service) return new Response(renderService(service,services,projects.filter(p=>matchesService(p,service.id)).map(p=>({...p,photos:Object.hasOwn(workTypeLabels,service.id)?photosForWork(p,service.id):p.photos})).filter(p=>p.photos.length)),{headers});
+      if (service) {
+        const matchingProjects=projects.filter(p=>matchesService(p,service.id))
+          .map(p=>({...p,photos:Object.hasOwn(workTypeLabels,service.id)?photosForWork(p,service.id):p.photos}))
+          .filter(p=>p.photos.length);
+        const showBankProject=service.id==='napivsukha-stiazhka'&&projects.some(p=>projectPath(p)==='/obiekty/pryvatbank/');
+        return new Response(renderService(service,services,matchingProjects,showBankProject),{headers});
+      }
       const project=projects.find(p=>path===projectPath(p).replace(/\/$/,''));
       if(project)return new Response(renderProject(project,services,labels),{headers});
       return new Response(renderNotFound(services),{status:404,headers});
